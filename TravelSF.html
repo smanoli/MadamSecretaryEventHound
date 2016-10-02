@@ -1,0 +1,46 @@
+<html>
+	<head>
+		<title>Madam Secretary Event Hound</title>
+		<script src="eventHound.js" type="text/javascript"></script>
+		<script>
+			// Config
+			var LINKIFY = true;
+			
+			function readResponse(response) {
+				/*console.log(JSON.stringify(response));
+				alert("Search " + JSON.stringify(response));*/
+				
+				for (var i = 0; i < response.events.length; i++) {
+					var section = "event-results";
+					var event = response.events[i];
+					
+					//console.log(JSON.stringify(event));
+					var city = event.locations[0].city;
+					if (city != "San Francisco"){
+						continue;
+					}
+					
+					if (! (event.name.includes("Canvass")) ){
+						continue;
+					}
+					
+					addEvent(event, section);
+				}
+			};
+			function doSearch() {
+				var today = escape (new Date().toISOString());
+				var end = "2016-11-10T08%3A00%3A00.000Z"
+				var SF = "lat=37.7749295&lng=-122.41941550000001";
+				searchLocation(SF, today, end);
+			};
+		</script>
+	</head>
+	<body onload="doSearch()">	
+		<img src="SearchPoodle.png" />
+		<h1>Travel out of SF</h1>
+			
+		<div id="event-results">
+		</div>
+		
+	</body>
+</html>
