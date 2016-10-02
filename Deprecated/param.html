@@ -1,0 +1,262 @@
+<html>
+	<head>
+		<title>Madam Secretary Event Hound</title>
+		<script>
+			// Config
+			var LINKIFY = true;
+			
+			// Usage:
+			// // query string: ?foo=lorem&bar=&baz
+			// var foo = getParameterByName('foo'); // "lorem"
+			// var bar = getParameterByName('bar'); // "" (present with empty value)
+			// var baz = getParameterByName('baz'); // "" (present with no value)
+			// var qux = getParameterByName('qux'); // null (absent)
+			function getParameterByName(name, url){
+				if (!url) url = window.location.href;
+				name = name.replace(/[\[\]]/g, "\\$&");
+				var regex = new RegExp("[?&]" + name + "(=([^&#]*)|&|#|$)"),
+					results = regex.exec(url);
+			if (!results) return null;
+			if (!results[2]) return '';
+			return decodeURIComponent(results[2].replace(/\+/g, " "));
+			};
+			function formatHours(hours) {
+				return (hours > 12) ? hours - 12 : hours;
+			};
+			function formatAmPm(hours) {
+				return (hours >= 12) ? "pm" : "am";	
+			};
+			function formatMinutes(mins) {
+				var minString = new String(mins);
+				return (minString.length === 1) ? "0" + minString : minString;	
+			};
+			function getTimeString(date) {
+				var hours = date.getHours();
+				var mins = date.getMinutes();
+				var timeStr = formatHours(hours) + ":" + formatMinutes(mins) + formatAmPm(hours);
+				return timeStr;
+			};
+			function addDVCHeadings(){
+				//alert("foo");
+				addDVCHeading("1-dvc-event-results", "Monday");
+				addDVCHeading("2-dvc-event-results", "Tuesday");
+				addDVCHeading("3-dvc-event-results", "Wednesday");
+				addDVCHeading("4-dvc-event-results", "Thursday");
+				addDVCHeading("5-dvc-event-results", "Friday");
+				addDVCHeading("6-dvc-event-results", "Saturday");
+				addDVCHeading("0-dvc-event-results", "Sunday");
+			};
+			function addDVCHeading(id, day){
+				var dayDiv = document.getElementById(id);
+				var h2Div = document.createElement("h2");
+				h2Div.appendChild(document.createTextNode(day + " DVC Phone Banks"));
+				dayDiv.appendChild(h2Div);
+			};
+			function addHeading(id, text){
+				var div = document.getElementById(id);
+				var h2Div = document.createElement("h2");
+				h2Div.appendChild(document.createTextNode(text));
+				div.appendChild(h2Div);
+			};
+			function addEventLine(lineText, isBreak, section) {
+				var resultDiv = document.getElementById(section);
+				var newChild;
+				
+				if (isBreak) {
+					newChild = document.createElement("br");
+				} else {
+					newChild = document.createElement("div");
+					newChild.appendChild(document.createTextNode(lineText));
+				}
+				resultDiv.appendChild(newChild);
+			};
+			function addEventLineBold(lineText, prefixText, section) {
+				var resultDiv = document.getElementById(section);
+				var newChild;
+				var newBoldChild;
+
+				newChild = document.createElement("div");
+				newBoldChild = document.createElement("b");
+				newBoldChild.appendChild(document.createTextNode(prefixText));
+				newChild.appendChild(newBoldChild);				
+				newChild.appendChild(document.createTextNode(lineText));
+					
+				
+				resultDiv.appendChild(newChild);
+				//resultDiv.appendChild(document.createElement("br"));
+			};
+			function addEventUrlLine(lineText, lineUrl, section) {
+				var resultDiv = document.getElementById(section);
+				var newChild;
+				
+				newChild = document.createElement("div");
+				newAnchorChild = document.createElement("a");
+				newAnchorChild.setAttribute("href", lineUrl);
+				newAnchorChild.appendChild(document.createTextNode(lineText));
+				newChild.appendChild(newAnchorChild);
+
+				resultDiv.appendChild(newChild);
+			};
+			function readResponse(response) {
+				/*console.log(JSON.stringify(response));
+				alert("Search " + JSON.stringify(response));*/
+				
+				for (var i = 0; i < response.events.length; i++) {
+					var event = response.events[i];
+					
+					//console.log(JSON.stringify(event));
+					var city = event.locations[0].city;
+					if (city == "Redwood City" || city == "Menlo Park" || city == "Los Gatos"){
+						continue;
+					}
+					
+					var section = "event-results";
+					var locName = event.locations[0].name;
+					var eventName = event.name;
+					
+					var startDate = new Date(event.startDate);
+					var endDate = new Date(event.endDate);
+					var day = startDate.getDay();
+					
+					
+					addEventLineBold(eventName, "Event: ", section);
+					addEventLineBold(startDate.toDateString(), "Date: ", section);
+					
+					var locLine = "";
+					if (event.locations && event.locations.length > 0) {
+						var location = event.locations[0];
+						
+						if (location.name != location.address1) {
+							locLine = location.name + ", ";
+						}
+						if (location.address1.trim().length > 0) {
+							locLine = locLine + location.address1 + ", ";
+						}
+						if (location.address2.trim().length > 0) {
+							locLine = locLine + location.address2 + ", ";
+						}
+						locLine = locLine + location.city + ", " + location.state;
+					}
+					
+					addEventLineBold(locLine, "Location: ", section);
+					
+					var eventTimeLine = "";
+					eventTimeLine = getTimeString(startDate) + " - " + getTimeString(endDate);
+				
+					addEventLineBold(eventTimeLine, "Time: ", section)
+					
+					// https://www.hillaryclinton.com/events/view/{event.lookupId}
+					var eventUrl = "https://www.hillaryclinton.com/events/view/" + event.lookupId;
+					if (LINKIFY) {
+						addEventUrlLine(eventUrl, eventUrl, section);
+					} else {
+						addEventLine(eventUrl, false, section);
+					}
+					addEventLine("", true, section);
+					
+				}
+			};
+			function readError(errorMessage) {
+				alert("Search failed (status: " + errorMessage + ")");
+			};
+			function searchLocation(loc, narrowBy){
+				var today = escape (new Date().toISOString());
+				
+				var eventSearch = typeof XMLHttpRequest != 'undefined'
+					? new XMLHttpRequest()
+					: new ActiveXObject('Microsoft.XMLHTTP');
+
+				eventSearch.responseType = "json";
+				var turl = "https://www.hillaryclinton.com/api/events/events?" + loc + "&status=confirmed&visibility=public&perPage=300&onepage=1&sortBy=start_date&sortDir=asc&radius=10&earliestTime=" + today + "&latestTime=2016-11-30T08%3A00%3A00.000Z&_=1474773712221";
+
+				eventSearch.open("GET", turl);
+				eventSearch.onreadystatechange = function() {
+					var status;
+					var data;
+					if (eventSearch.readyState == 4) {
+						status = eventSearch.status;
+						if (status >= 200 && status < 300) {
+							//data = JSON.parse(eventSearch.responseText);
+							readResponse(eventSearch.response);
+						} else {
+							readError(status);
+						}
+					}
+				};
+				eventSearch.send();
+			};
+			function doSearch() {
+				var SJ = "lat=37.3382082&lng=-121.88632860000001";
+				var MV = "lat=37.3860517&lng=-122.0838511";
+				var SF = "lat=37.7749295&lng=-122.41941550000001";
+				
+				var pLoc = getParameterByName('loc');
+				var pDur = getParameterByName('dur');
+				
+				//alert(pLoc);
+				
+				switch(pLoc) {
+					case "SF":
+						searchLocation(SF, "Canvass");
+						break;
+					case "SJ":
+						searchLocation(SJ, "San Jose");
+						break;
+					case "MV":
+						searchLocation(MV, "Mountain View")
+						break;
+					case "DVC":
+						addDVCHeadings();
+						searchLocation(MV, "DVC")
+						break;
+					default:
+						searchLocation(MV, "Mountain View");
+						//addHeading()
+						searchLocation(SJ, "San Jose");
+					
+				}
+				
+			};
+		</script>
+	</head>
+	<body onload="doSearch()">	
+		<img src="SearchPoodle.png" />
+		<h1>Madam Secretary Event Hound</h1>
+		
+		
+		<div id="DVC">
+			<div id="1-dvc-event-results">
+			</div>
+			<div id="2-dvc-event-results">
+				
+			</div>
+			<div id="3-dvc-event-results">
+				
+			</div>
+			<div id="4-dvc-event-results">
+				
+			</div>
+			<div id="5-dvc-event-results">
+				
+			</div>
+			<div id="6-dvc-event-results">
+				
+			</div>
+			<div id="0-dvc-event-results">
+			</div>
+		</div>
+		<div id="SJ-event-results">
+		</div>
+		<div id="MV-event-results">
+		</div>
+		<div id="PV-event-results">
+		</div>
+		<div id="Stanford-event-results">
+		</div>
+		<div id="PA-event-results">
+		</div>
+		<div id="event-results">
+		</div>
+
+	</body>
+</html>

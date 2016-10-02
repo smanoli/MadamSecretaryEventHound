@@ -1,0 +1,183 @@
+<html>
+	<head>
+		<title>Madam Secretary Event Hound</title>
+		<script>
+			// Config
+			var LINKIFY = true;
+			var weekdayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+			var monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul",  "Aug", "Sep",  "Oct", "Nov", "Dec"];
+			
+			function formatHours(hours) {
+				return (hours > 12) ? hours - 12 : hours;
+			};
+			function formatAmPm(hours) {
+				return (hours >= 12) ? "pm" : "am";	
+			};
+			function formatMinutes(mins) {
+				var minString = new String(mins);
+				return (minString.length === 1) ? "0" + minString : minString;	
+			};
+			function addEventLine(lineText, isBreak) {
+				var resultDiv = document.getElementById("event-results");
+				var newChild;
+				
+				if (isBreak) {
+					newChild = document.createElement("br");
+				} else {
+					newChild = document.createElement("div");
+					newChild.appendChild(document.createTextNode(lineText));
+				}
+				resultDiv.appendChild(newChild);
+				//resultDiv.appendChild(document.createElement("br"));
+			};
+			function addEventUrlLine(lineText, lineUrl) {
+				var resultDiv = document.getElementById("event-results");
+				var newChild;
+				
+				newChild = document.createElement("div");
+				newAnchorChild = document.createElement("a");
+				newAnchorChild.setAttribute("href", lineUrl);
+				newAnchorChild.appendChild(document.createTextNode(lineText));
+				newChild.appendChild(newAnchorChild);
+
+				resultDiv.appendChild(newChild);
+				//resultDiv.appendChild(document.createElement("br"));
+			};
+			function readResponse(response) {
+				/*console.log(JSON.stringify(response));
+				alert("Search " + JSON.stringify(response));*/
+				
+				for (var i = 0; i < response.events.length; i++) {
+					var event = response.events[i];
+					
+					//console.log(JSON.stringify(event));
+					var city = event.locations[0].city;
+					if (city == "Redwood City" || city == "Menlo Park" || city == "Los Gatos"){
+						continue;
+					}
+					
+					// name (date + time range)
+					var eventName = event.name;
+					var startDate = new Date(event.startDate);
+					var endDate = new Date(event.endDate);
+					/*addEventLine("Start: " + event.startDate,false);
+					addEventLine("Month: " + monthNames[startDate.getMonth()],false);
+					addEventLine("Day: " + weekdayNames[startDate.getDay()],false);
+					addEventLine("Date: " + startDate.getDate(),false);
+					addEventLine("Year: " + startDate.getFullYear(),false);
+					addEventLine("Hours: " + formatHours(startDate.getHours()),false);
+					addEventLine("Minutes: " + startDate.getMinutes(),false);
+					addEventLine("A/P: " + formatAmPm(startDate.getHours()),false);*/
+					
+					// (weekday, month day, 2016 timeam-timepm PDT)
+					// (weekday, month day, 2016 timeam-weekday, month day, 2016 timepm PDT)
+					
+					if (startDate.getMonth() === endDate.getMonth() &&
+					    startDate.getDate() === endDate.getDate()) {
+						eventName += " (" + weekdayNames[startDate.getDay()] + ", " + monthNames[startDate.getMonth()] +
+									 " " + startDate.getDate() + ", " + startDate.getFullYear() +
+									 " " + formatHours(startDate.getHours()) + ":" + formatMinutes(startDate.getMinutes()) + formatAmPm(startDate.getHours()) +
+									 "-" + formatHours(endDate.getHours()) + ":" + formatMinutes(endDate.getMinutes()) + formatAmPm(endDate.getHours()) + " PDT)";
+					} else {
+						eventName += " (" + weekdayNames[startDate.getDay()] + ", " + monthNames[startDate.getMonth()] +
+									 " " + startDate.getDate() + ", " + startDate.getFullYear() +
+									 " " + formatHours(startDate.getHours()) + ":" + formatMinutes(startDate.getMinutes()) + formatAmPm(startDate.getHours()) +
+									 "-" + weekdayNames[endDate.getDay()] + ", " + monthNames[endDate.getMonth()] +
+									 " " + endDate.getDate() + ", " + endDate.getFullYear() +
+									 " " + formatHours(endDate.getHours()) + ":" + formatMinutes(endDate.getMinutes()) + formatAmPm(endDate.getHours()) + " PDT)";
+					}
+					
+					addEventLine(eventName, false);
+					
+					// https://www.hillaryclinton.com/events/view/{event.lookupId}
+					var eventUrl = "https://www.hillaryclinton.com/events/view/" + event.lookupId;
+					if (LINKIFY) {
+						addEventUrlLine(eventUrl, eventUrl);
+					} else {
+						addEventLine(eventUrl, false);
+					}
+					
+					// locations[1].name if != locations[1].address1
+					// locations[1].address1
+					// ?locations[1].address2
+					// locations[1].city, locations[1].state locations[1].postalCode
+					if (event.locations && event.locations.length > 0) {
+						var location = event.locations[0];
+						
+						if (location.name != location.address1) {
+							addEventLine(location.name, false);
+						}
+						addEventLine(location.address1, false);
+						if (location.address2.trim().length > 0) {
+							addEventLine(location.address2, false);
+						}
+						addEventLine(location.city + ", " + location.state + " " + location.postalCode, false);
+					}
+					
+					addEventLine("", true);
+				}
+			};
+			function readError(errorMessage) {
+				alert("Search failed (status: " + errorMessage + ")");
+			};
+			function doSearch() {
+				document.getElementById("event-results").innerHTML = "";
+				var radioButton = document.querySelector('input[name = "city"]:checked').value;
+					
+				var today = escape (new Date().toISOString());
+				var SJ = "lat=37.3382082&lng=-121.88632860000001";
+				var MV = "lat=37.3860517&lng=-122.0838511";
+				var loc;
+				
+				if (radioButton == "Mountain View"){
+					loc = MV;
+				}
+				else if (radioButton == "San Jose"){
+					loc = SJ;
+				}
+				else{
+					alert("Error")
+				}
+				
+				var eventSearch = typeof XMLHttpRequest != 'undefined'
+									? new XMLHttpRequest()
+									: new ActiveXObject('Microsoft.XMLHTTP');
+				/*eventSearch.addEventListener("load", readError);
+				eventSearch.addEventListener("error", transferFailed);*/
+				eventSearch.responseType = "json";
+				var turl = "https://www.hillaryclinton.com/api/events/events?" + loc + "&status=confirmed&visibility=public&perPage=300&onepage=1&sortBy=start_date&sortDir=asc&radius=10&earliestTime=" + today + "&latestTime=2016-11-30T08%3A00%3A00.000Z&_=1474773712221";
+				
+				eventSearch.open("GET", turl);
+				eventSearch.onreadystatechange = function() {
+					var status;
+					var data;
+					if (eventSearch.readyState == 4) {
+						status = eventSearch.status;
+						if (status >= 200 && status < 300) {
+							//data = JSON.parse(eventSearch.responseText);
+							readResponse(eventSearch.response);
+						} else {
+							readError(status);
+						}
+					}
+				};
+				eventSearch.send();
+			};
+		</script>
+	</head>
+	<body>
+		
+		<img src="SearchPoodle.png" />
+		<h1>Madam Secretary Event Hound</h1>
+		
+		<input type="radio" id = city0 name="city" value="Mountain View" checked="checked"> Mountain View<br>
+		<input type="radio" id = city1 name="city" value="San Jose"> San Jose<br>
+		
+		<input id="Search" type="button" value="Search" onclick="doSearch()"/>
+		<br><br>
+		
+		<div id="event-results">
+		</div>
+
+	</body>
+</html>
