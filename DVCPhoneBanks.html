@@ -1,0 +1,98 @@
+<html>
+	<head>
+		<title>Madam Secretary Event Hound</title>
+		<script src="eventHound.js" type="text/javascript"></script>
+		<script>
+			// Config
+			var LINKIFY = true;
+			var badEventIDs = [];
+			
+			function isBad(id) {
+				idx = badEventIDs.indexOf(id);
+				if (idx != -1){
+					return true
+				}
+				return false;
+			};
+			function readResponse(response) {
+				for (var i = 0; i < response.events.length; i++) {
+					var event = response.events[i];
+					var section = "event-results";
+					
+					var locName = event.locations[0].name;
+					var day = new Date(event.startDate).getDay();
+					var city = event.locations[0].city;
+					
+					if (city != "Mountain View"){
+						continue;
+					}
+					if (isBad(event.lookupId) == true){
+					 	continue;
+					}
+					layout = getParameterByName('layout');
+					if (layout == 'cron'){
+						console.log("cron");
+						document.getElementById("DVC").innerHTML = "";
+					}
+				
+					if (locName == "DVC Mountain View" && event.name.includes("Phone Bank")){
+						if (layout != 'cron'){
+							section = day + "-dvc-event-results";
+						}
+					}
+					else {
+						continue; 
+					}
+					
+					addEvent(event, section);
+				}
+			};
+			function doSearch() {
+				var MV = "lat=37.3860517&lng=-122.0838511";
+				var today = escape (new Date().toISOString());
+				var end = "2016-11-30T08%3A00%3A00.000Z"
+				
+				param = getParameterByName('end');
+				
+				if (param > 0){
+					param = parseInt(param);
+					var myNewDate = new Date();
+					myNewDate.setDate(myNewDate.getDate() + param);
+					var end = escape (myNewDate.toISOString());
+				}
+				
+				searchLocation(MV, today, end);
+			};
+		</script>
+	</head>
+	<body onload="doSearch()">	
+		<img src="./Images/SearchPoodle-200.png" />
+		<h1>Upcoming Phone Banks at the DVC</h1>
+		<div id="DVC">
+			<div id="1-dvc-event-results">
+				<h2>Monday DVC Phonebanks</h2>
+			</div>
+			<div id="2-dvc-event-results">
+				<h2>Tuesday DVC Phonebanks</h2>
+			</div>
+			<div id="3-dvc-event-results">
+				<h2>Wednesday DVC Phonebanks</h2>
+			</div>
+			<div id="4-dvc-event-results">
+				<h2>Thursday DVC Phonebanks</h2>
+			</div>
+			<div id="5-dvc-event-results">
+				<h2>Friday DVC Phonebanks</h2>
+				Walk-ins from 10-6
+			</div>
+			<div id="6-dvc-event-results">
+				<h2>Saturday DVC Phonebanks</h2>
+			</div>
+			<div id="0-dvc-event-results">
+				<h2>Sunday DVC Phonebanks</h2>
+			</div>
+		</div>
+		<div id="event-results">
+		</div>
+	</body>
+</html>
