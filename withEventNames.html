@@ -1,0 +1,219 @@
+<html>
+	<head>
+		<title>Madam Secretary Event Hound</title>
+		<script>
+			// Config
+			var LINKIFY = true;
+			
+			function formatHours(hours) {
+				return (hours > 12) ? hours - 12 : hours;
+			};
+			function formatAmPm(hours) {
+				return (hours >= 12) ? "pm" : "am";	
+			};
+			function formatMinutes(mins) {
+				var minString = new String(mins);
+				return (minString.length === 1) ? "0" + minString : minString;	
+			};
+			function getTimeString(date) {
+				var hours = date.getHours();
+				var mins = date.getMinutes();
+				var timeStr = formatHours(hours) + ":" + formatMinutes(mins) + formatAmPm(hours);
+				return timeStr;
+			};
+			function addEventLine(lineText, isBreak, section) {
+				var resultDiv = document.getElementById(section);
+				var newChild;
+				
+				if (isBreak) {
+					newChild = document.createElement("br");
+				} else {
+					newChild = document.createElement("div");
+					newChild.appendChild(document.createTextNode(lineText));
+				}
+				resultDiv.appendChild(newChild);
+			};
+			function addEventLineBold(lineText, prefixText, section) {
+				var resultDiv = document.getElementById(section);
+				var newChild;
+				var newBoldChild;
+
+				newChild = document.createElement("div");
+				newBoldChild = document.createElement("b");
+				newBoldChild.appendChild(document.createTextNode(prefixText));
+				newChild.appendChild(newBoldChild);				
+				newChild.appendChild(document.createTextNode(lineText));
+					
+				
+				resultDiv.appendChild(newChild);
+				//resultDiv.appendChild(document.createElement("br"));
+			};
+			function addEventUrlLine(lineText, lineUrl, section) {
+				var resultDiv = document.getElementById(section);
+				var newChild;
+				
+				newChild = document.createElement("div");
+				newAnchorChild = document.createElement("a");
+				newAnchorChild.setAttribute("href", lineUrl);
+				newAnchorChild.appendChild(document.createTextNode(lineText));
+				newChild.appendChild(newAnchorChild);
+
+				resultDiv.appendChild(newChild);
+			};
+			function readResponse(response) {
+				/*console.log(JSON.stringify(response));
+				alert("Search " + JSON.stringify(response));*/
+				
+				for (var i = 0; i < response.events.length; i++) {
+					var event = response.events[i];
+					
+					//console.log(JSON.stringify(event));
+					var city = event.locations[0].city;
+					if (city == "Redwood City" || city == "Menlo Park" || city == "Los Gatos"){
+						continue;
+					}
+					var section = "event-results";
+					var locName = event.locations[0].name;
+					var eventName = event.name;
+					
+					var startDate = new Date(event.startDate);
+					var endDate = new Date(event.endDate);
+					var day = startDate.getDay();
+					
+					if (locName == "DVC Mountain View"){
+						section = day + "-dvc-event-results";
+					} else if (city == "Portola Valley"){
+						section = "PV-event-results";
+					} else if (city == "Stanford"){
+						section = "Stanford-event-results";
+					} else if (city == "Mountain View"){
+						section = "MV-event-results";
+					} else if (city == "Palo Alto"){
+						section = "PA-event-results";
+					} else if (city == "San Jose"){
+						section = "SJ-event-results";
+					} else{
+						section = "event-results";
+					}
+					
+					addEventLineBold(eventName, "Event: ", section);
+					addEventLineBold(startDate.toDateString(), "Date: ", section);
+					
+					var locLine = "";
+					if (event.locations && event.locations.length > 0) {
+						var location = event.locations[0];
+						
+						if (location.name != location.address1) {
+							locLine = location.name + ", ";
+						}
+						if (location.address1.trim().length > 0) {
+							locLine = locLine + location.address1 + ", ";
+						}
+						if (location.address2.trim().length > 0) {
+							locLine = locLine + location.address2 + ", ";
+						}
+						locLine = locLine + location.city + ", " + location.state;
+					}
+					addEventLineBold(locLine, "Location: ", section);
+					
+					var eventTimeLine = "";
+					eventTimeLine = getTimeString(startDate) + " - " + getTimeString(endDate);
+				
+					addEventLineBold(eventTimeLine, "Time: ", section);
+					
+					// https://www.hillaryclinton.com/events/view/{event.lookupId}
+					var eventUrl = "https://www.hillaryclinton.com/events/view/" + event.lookupId;
+					if (LINKIFY) {
+						addEventUrlLine(eventUrl, eventUrl, section);
+					} else {
+						addEventLine(eventUrl, false, section);
+					}
+					addEventLine("", true, section);
+					
+				}
+			};
+			function readError(errorMessage) {
+				alert("Search failed (status: " + errorMessage + ")");
+			};
+			function searchLocation(loc){
+				var today = escape (new Date().toISOString());
+				
+				var eventSearch = typeof XMLHttpRequest != 'undefined'
+					? new XMLHttpRequest()
+					: new ActiveXObject('Microsoft.XMLHTTP');
+
+				eventSearch.responseType = "json";
+				var turl = "https://www.hillaryclinton.com/api/events/events?" + loc + "&status=confirmed&visibility=public&perPage=300&onepage=1&sortBy=start_date&sortDir=asc&radius=10&earliestTime=" + today + "&latestTime=2016-11-30T08%3A00%3A00.000Z&_=1474773712221";
+
+				eventSearch.open("GET", turl);
+				eventSearch.onreadystatechange = function() {
+					var status;
+					var data;
+					if (eventSearch.readyState == 4) {
+						status = eventSearch.status;
+						if (status >= 200 && status < 300) {
+							//data = JSON.parse(eventSearch.responseText);
+							readResponse(eventSearch.response);
+						} else {
+							readError(status);
+						}
+					}
+				};
+				eventSearch.send();
+			};
+			function doSearch() {
+				var SJ = "lat=37.3382082&lng=-121.88632860000001";
+				var MV = "lat=37.3860517&lng=-122.0838511";
+				searchLocation(MV);
+				searchLocation(SJ);
+			};
+		</script>
+	</head>
+	<body onload="doSearch()">	
+		<img src="SearchPoodle.png" />
+		<h1>Madam Secretary Event Hound</h1>
+		
+		
+		<div id="event-results">
+		</div>
+		
+		<div id="DVC">
+			<div id="1-dvc-event-results">
+				<h2>Monday DVC Events</h2>
+			</div>
+			<div id="2-dvc-event-results">
+				<h2>Tuesday DVC Events</h2>
+			</div>
+			<div id="3-dvc-event-results">
+				<h2>Wednesday DVC Events</h2>
+			</div>
+			<div id="4-dvc-event-results">
+				<h2>Thursday DVC Events</h2>
+			</div>
+			<div id="5-dvc-event-results">
+				<h2>Friday DVC Events</h2>
+			</div>
+			<div id="6-dvc-event-results">
+				<h2>Saturday DVC Events</h2>
+			</div>
+			<div id="0-dvc-event-results">
+				<h2>Sunday DVC Events</h2>
+			</div>
+		</div>
+		<div id="PV-event-results">
+			<h2>Portola Valley</h2>
+		</div>
+		<div id="Stanford-event-results">
+			<h2>Stanford</h2>
+		</div>
+		<div id="PA-event-results">
+			<h2>Palo Alto</h2>
+		</div>
+		<div id="MV-event-results">
+			<h2>Mountain View (non DVC)</h2>
+		</div>
+		<div id="SJ-event-results">
+			<h2>San Jose</h2>
+		</div>
+	</body>
+</html>
