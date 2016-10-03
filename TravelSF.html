@@ -13,20 +13,19 @@
 					if (event.locations[0].city != "San Francisco"){
 						continue;
 					}
-					
+
 					if (! (event.name.includes("Canvass")) ){
 						continue;
-					}
+			}
 					
 					addEvent(event, "event-results");
 				}
 			};
 			function doSearch() {
 				var today = escape (new Date().toISOString());
-				var end = "2016-11-10T08%3A00%3A00.000Z"
+				var end = "2016-11-30T08%3A00%3A00.000Z"
 				var SF = "lat=37.7749295&lng=-122.41941550000001";
 				
-				var test = newDate();
 				
 				searchLocation(SF, today, end);
 			};
@@ -39,3 +38,4 @@
 		</div>
 	</body>
 </html>
+
